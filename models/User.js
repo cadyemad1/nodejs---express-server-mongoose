@@ -1,4 +1,6 @@
 const mongooes = require("mongoose");
+// const util = require("util");
+var bcrypt = require("bcryptjs");
 
 const userSchema = new mongooes.Schema({
   username: {
@@ -22,6 +24,20 @@ const userSchema = new mongooes.Schema({
     min: 13
   }
 });
+
+userSchema.pre("save", async function(next) {
+  if (this.password || this.isModified(password)) {
+    const salt = await bcrypt.genSalt(10);
+    const hashedPassword = await bcrypt.hash(this.password, salt);
+    this.password = hashedPassword;
+  }
+  next();
+});
+
+userSchema.methods.checkPassword = function(userPassword) {
+  currentDoc = this;
+  return bcrypt.compare(userPassword, currentDoc.password);
+};
 
 const User = mongooes.model("User", userSchema);
 
