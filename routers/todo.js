@@ -1,44 +1,48 @@
 const express = require("express");
-const Todo = require("../models/Todo");
-const User = require("../models/User");
 const router = express.Router();
+const { check } = require("express-validator");
 
-router.post("/", async (req, res, next) => {
-  try {
-    const { username } = req.body;
-    const user = await User.findOne({ username });
-    req.body.userId = user._id;
+const validationReqs = require("../middlewares/validateRequests");
+const Todo = require("../models/Todo");
+const verifyUser = require("../middlewares/auth");
+const asyncHandler = require("../Handler/asyncHandler");
+
+router.post(
+  "/",
+  validationReqs([check("title").notEmpty()]),
+  verifyUser,
+  asyncHandler(async (req, res, next) => {
+    req.body.userId = req.user.id;
     const todo = new Todo(req.body);
     await todo.save();
     res.json({ message: "todo was created successfully" });
-  } catch (err) {
-    res.status(404).send(err.errmsg);
-  }
-});
+  })
+);
 
-router.get("/:userId", async (req, res, next) => {
-  try {
+router.get(
+  "/:userId",
+  verifyUser,
+  asyncHandler(async (req, res, next) => {
     const { userId } = req.params;
     const todos = await Todo.find({ userId });
     res.send(todos);
-  } catch (err) {
-    console.log("**", err);
-    res.status(404).send(err.errmsg);
-  }
-});
+  })
+);
 
-router.delete("/:id", async (req, res, next) => {
-  try {
+router.delete(
+  "/:id",
+  verifyUser,
+  asyncHandler(async (req, res, next) => {
     const { id } = req.params;
     const deletedTodo = await Todo.findByIdAndDelete(id);
     res.status(200).send("Deleted");
-  } catch (err) {
-    res.status(404).send(err);
-  }
-});
+  })
+);
 
-router.patch("/:id", async (req, res, next) => {
-  try {
+router.patch(
+  "/:id",
+  verifyUser,
+  asyncHandler(async (req, res, next) => {
     const { id } = req.params;
     const updatedTodo = await Todo.findByIdAndUpdate(id, req.body, {
       runValidators: true,
@@ -47,8 +51,6 @@ router.patch("/:id", async (req, res, next) => {
     res
       .status(200)
       .json({ message: "todo was edited successfully", updatedTodo });
-  } catch (err) {
-    res.status(404).send(err);
-  }
-});
+  })
+);
 module.exports = router;

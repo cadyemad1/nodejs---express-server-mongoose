@@ -1,6 +1,11 @@
 const mongooes = require("mongoose");
-// const util = require("util");
+const { promisify } = require("util");
 var bcrypt = require("bcryptjs");
+var jwt = require("jsonwebtoken");
+const { jwtSecretKey } = require("../config");
+
+const signJWT = promisify(jwt.sign);
+const verifyJWT = promisify(jwt.verify);
 
 const userSchema = new mongooes.Schema({
   username: {
@@ -37,6 +42,15 @@ userSchema.pre("save", async function(next) {
 userSchema.methods.checkPassword = function(userPassword) {
   currentDoc = this;
   return bcrypt.compare(userPassword, currentDoc.password);
+};
+
+userSchema.methods.generateToken = function() {
+  currDoc = this;
+  return signJWT({ _id: currDoc._id }, jwtSecretKey, { expiresIn: "30min" });
+};
+
+userSchema.statics.verifyToken = async function(token) {
+  return await verifyJWT(token, jwtSecretKey);
 };
 
 const User = mongooes.model("User", userSchema);

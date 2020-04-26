@@ -1,23 +1,31 @@
 const express = require("express");
 const User = require("../models/User");
 const Todo = require("../models/Todo");
-
+const verifyUser = require("../middlewares/auth");
 const router = express.Router();
+const validationReqs = require("../middlewares/validateRequests");
+const { check } = require("express-validator");
+const asyncHandler = require("../Handler/asyncHandler");
 
-router.post("/register", async (req, res, next) => {
-  try {
+router.post(
+  "/register",
+  validationReqs([
+    check("username").notEmpty(),
+    check("password").notEmpty(),
+    check("firstName").notEmpty()
+  ]),
+  asyncHandler(async (req, res, next) => {
     const user = new User(req.body);
     console.log("**", user);
     await user.save();
     res.json({ message: "user was registered successfully" });
-  } catch (err) {
-    console.log("**", err);
-    res.status(404).send(err.errmsg);
-  }
-});
+  })
+);
 
-router.post("/login", async (req, res, next) => {
-  try {
+router.post(
+  "/login",
+  validationReqs([check("username").notEmpty(), check("password").notEmpty()]),
+  asyncHandler(async (req, res, next) => {
     const { username, password } = req.body;
     const user = await User.findOne({
       username: username
@@ -30,52 +38,49 @@ router.post("/login", async (req, res, next) => {
     const userTodos = await Todo.find({ userId: user._id }).populate("userId");
     const isMatch = await user.checkPassword(password);
     if (isMatch) {
-      res
-        .status(200)
-        .send({ message: "Logged in successfully", username, userTodos });
+      const token = await user.generateToken();
+      res.status(200).send({
+        message: "Logged in successfully",
+        username,
+        userTodos,
+        token
+      });
     } else {
       const error = new Error("wrong username or password!");
       error.statusCode = 401;
       throw error;
     }
-  } catch (err) {
-    // res.send(401).json({ error: "invalid credentials" });
-    next(err);
-  }
-});
+  })
+);
 
-router.get("/", async (req, res, next) => {
-  try {
+router.get(
+  "/",
+  verifyUser,
+  asyncHandler(async (req, res, next) => {
     const users = await User.find({});
     res.send(users);
-  } catch (err) {
-    res.status(404).send(err);
-  }
-});
+  })
+);
 
-router.delete("/:id", async (req, res, next) => {
-  try {
-    const { id } = req.params;
-    const deletedUser = await User.findByIdAndDelete(id);
+router.delete(
+  "/",
+  verifyUser,
+  asyncHandler(async (req, res, next) => {
+    await req.user.remove();
     res.status(200).send("Deleted");
-  } catch (err) {
-    res.status(404).send(err);
-  }
-});
+  })
+);
 
-router.patch("/:id", async (req, res, next) => {
-  try {
-    const { id } = req.params;
-    const updatedUser = await User.findByIdAndUpdate(id, req.body, {
-      runValidators: true,
-      new: true
-    });
-    res
-      .status(200)
-      .json({ message: "user was edited successfully", updatedUser });
-  } catch (err) {
-    res.status(404).send(err);
-  }
-});
+router.patch(
+  "/",
+  verifyUser,
+  asyncHandler(async (req, res, next) => {
+    const user = req.user;
+    const newupdate = Object.entries(req.body);
+    newupdate.forEach(el => (user[el[0]] = el[1]));
+    await user.save();
+    res.status(200).json({ message: "user was edited successfully", user });
+  })
+);
 
 module.exports = router;

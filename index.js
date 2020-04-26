@@ -1,12 +1,13 @@
+require("dotenv").config();
 const express = require("express");
 require("./db");
+const { port } = require("./config");
 
 const userRouter = require("./routers/user");
 const todoRoute = require("./routers/todo");
 
 const app = express();
 const hostname = "127.0.0.1";
-const port = 3000;
 
 app.use(express.json());
 

@@ -1,6 +1,7 @@
 const mongoose = require("mongoose");
+const { mongoUrl } = require("./config");
 mongoose
-  .connect("mongodb://localhost/todo-list", {
+  .connect(mongoUrl, {
     useNewUrlParser: true,
     useUnifiedTopology: true
   })
